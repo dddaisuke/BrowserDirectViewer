@@ -17,6 +17,7 @@ package com.appspot.direct_viewer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Enumeration;
 import java.util.logging.Logger;
 
 import javax.servlet.ServletException;
@@ -25,6 +26,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import com.appspot.direct_viewer.model.State;
+import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpResponse;
@@ -50,15 +52,28 @@ public class StartPageServlet extends AbstractServlet {
 	@Override
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException,
 			ServletException {
-		// handle OAuth2 callback
-		handleCallbackIfRequired(req, resp);
+		Enumeration<String> names = req.getParameterNames();
+		for (String name = null; names.hasMoreElements(); name = names.nextElement()) {
+			logger.info(req.getParameter(name));
+		}
+		String stateParam = req.getParameter("state");
+		if (stateParam != null) {
+			req.getSession().setAttribute(KEY_STATE, req.getParameter("state"));
+		}
 
-		// Making sure that we have user credentials
-		loginIfRequired(req, resp);
-
-		// Deserialize the state in order to specify some values to the DrEdit
-		// JavaScript client below.
-		mainProcess(req, resp);
+		String code = req.getParameter("code");
+		if (code != null) {
+			// handle OAuth2 callback
+			handleCallbackIfRequired(req, resp);
+		} else if (getCredential(req, resp) == null) {
+			// Making sure that we have user credentials
+			loginIfRequired(req, resp);
+		} else {
+			// Deserialize the state in order to specify some values to the
+			// DrEdit
+			// JavaScript client below.
+			mainProcess(req, resp);
+		}
 	}
 
 	private void mainProcess(HttpServletRequest req, HttpServletResponse resp) throws IOException,
